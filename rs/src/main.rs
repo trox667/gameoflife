@@ -1,4 +1,5 @@
 use pixels::{wgpu::Surface, Error, Pixels, SurfaceTexture};
+use rand::prelude::*;
 use winit::dpi::LogicalSize;
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::{
@@ -13,19 +14,21 @@ use winit_input_helper::WinitInputHelper;
 const WIDTH: u32 = 320;
 const HEIGHT: u32 = 240;
 
+#[derive(Eq, PartialEq)]
+enum CellStatus {
+    Alive,
+    Dead,
+}
+
 struct Cell {
     x: u32,
     y: u32,
-    size: u32,
+    status: CellStatus,
 }
 
 impl Cell {
-    fn new() -> Self {
-        Self {
-            x: 0,
-            y: 0,
-            size: 4,
-        }
+    fn new(x: u32, y: u32, status: CellStatus) -> Self {
+        Self { x, y, status }
     }
 
     fn draw(&self, frame: &mut [u8]) {
@@ -33,7 +36,7 @@ impl Cell {
             let x = (i % WIDTH as usize) as u32;
             let y = (i / WIDTH as usize) as u32;
 
-            if x == self.x && y == self.y {
+            if x == self.x && y == self.y && self.status == CellStatus::Alive {
                 pixel.copy_from_slice(&[0xff, 0x00, 0x00, 0xff])
             } else {
                 pixel.copy_from_slice(&[0xff, 0xff, 0xff, 0xff])
@@ -42,14 +45,55 @@ impl Cell {
     }
 }
 
+struct Board {
+    cells: Vec<Cell>,
+}
+
+impl Board {
+    fn new(count: u32) -> Self {
+        let mut cells: Vec<Cell> = vec![];
+        let mut rng = rand::thread_rng();
+        for i in 0..count {
+            let x = i % WIDTH as u32;
+            let y = i / WIDTH as u32;
+            let rnd: f32 = rng.gen();
+            cells.push(Cell::new(
+                x,
+                y,
+                if rnd > 0.5 {
+                    CellStatus::Alive
+                } else {
+                    CellStatus::Dead
+                },
+            ));
+        }
+        Self { cells }
+    }
+
+    fn draw(&self, frame: &mut [u8]) {
+        for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
+            // let x = (i % WIDTH as usize) as u32;
+            // let y = (i / WIDTH as usize) as u32;
+
+            if let Some(cell) = self.cells.get(i) {
+                if cell.status == CellStatus::Alive {
+                    pixel.copy_from_slice(&[0xff, 0x00, 0x00, 0xff])
+                } else {
+                    pixel.copy_from_slice(&[0xff, 0xff, 0xff, 0xff])
+                }
+            };
+        }
+    }
+}
+
 fn main() -> Result<(), Error> {
-    let cell = Cell::new();
+    let mut board = Board::new(WIDTH * HEIGHT);
     let event_loop = EventLoop::new();
     let mut input = WinitInputHelper::new();
     let window = {
         let size = LogicalSize::new(WIDTH as f64, HEIGHT as f64);
         WindowBuilder::new()
-            .with_title("Hello Pixels")
+            .with_title("Game of Life")
             .with_inner_size(size)
             .with_min_inner_size(size)
             .build(&event_loop)
@@ -65,7 +109,7 @@ fn main() -> Result<(), Error> {
 
     event_loop.run(move |event, _, control_flow| {
         if let Event::RedrawRequested(_) = event {
-            cell.draw(pixels.get_frame());
+            board.draw(pixels.get_frame());
             pixels.render().unwrap()
         }
         if input.update(event) {
