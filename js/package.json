@@ -1,0 +1,17 @@
+{
+  "name": "game-of-life",
+  "version": "1.0.0",
+  "description": "Game Of Life in Javascript",
+  "main": "index.js",
+  "author": "trox667",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "parcel watch index.html",
+    "build": "parcel build index.html"
+  },
+  "devDependencies": {
+    "parcel-bundler": "^1.12.4",
+    "typescript": "^3.9.5"
+  }
+}
